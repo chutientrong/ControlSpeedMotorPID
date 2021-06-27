@@ -43,7 +43,6 @@ else
 end
 % End initialization code - DO NOT EDIT
 
-
 % --- Executes just before Project_Final is made visible.
 function Project_Final_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
@@ -61,7 +60,6 @@ guidata(hObject, handles);
 % UIWAIT makes Project_Final wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
-
 % --- Outputs from this function are returned to the command line.
 function varargout = Project_Final_OutputFcn(hObject, eventdata, handles) 
 % varargout  cell array for returning output args (see VARARGOUT);
@@ -71,7 +69,6 @@ function varargout = Project_Final_OutputFcn(hObject, eventdata, handles)
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
-
 
 
 function btnStart_Callback(hObject, eventdata, handles)
@@ -85,65 +82,31 @@ if button_state == get(hObject,'Max')
     set(handles.btnStart,'BackgroundColor','red');
 
     PV=0;
-    MV=0;
-    error=0;
-    time = now;
-    startTime = clock;  
+    ppPV=0;
     
-    Setpoint = 0;
-    pPV = 0;  % actual possition (Process Value)
-    pInterval = 0;
-    pError = 0;   % how much SP and PV are diff (SP - PV)
-    pIntegral = 0; % curIntegral + (error * Delta Time)
-    pDerivative = 0;  %error - prev error) / Delta time
-    preError=0; % error from last time (previous Error)
-    pKp = 1;      pKi = 1;    pKd = 1; % PID constant multipliers
-    pDt = 0; % delta time
-    pMV = 0; % the drive amount that effects the PV.
-    preMVv=0;
-    pNoisePercent = 0; % amount of the full range to randomly alter the PV
-    pNoise = 0;  % random noise added to PV
+    MV=0;
+    preMV = 0; 
+    ppMV=0;
+    
     Vmotor=0;
     preVmotor=0;
     prepreVmotor=0;
-    noisePercent=0;
-    noise=0;
-    lastderivative=0;
-    preIntegral=0;
-    preMV = 0;
-    prePV = 0;
-    minn = -1000;
-    maxx=1000;
-    Dt=0.1;
+    
+    Setpoint = 0;
+    ppSetpoint=0;
+    
+    error=0;
     lastError=0;
     prepreError=0;
+    
+    time = now;
+    startTime = clock;  
     timeInterval = 0.005; %Pause
     filter = 0.05;
-    lastTime = now;
-    ppPV=0;
-    ppMV=0;
-    ppSetpoint=0;
-    outSYS=0;
-    ppoutSYS=0;
-    ppPVV=0;
-    PVV=0;
-    kp=0;
-    ki=0;
-    kd=0;
-    ii=0;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%% Plot khoi tao %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
-%     
-    plotHandle = plot(handles.pictureBox1,time,ppPV,'Marker','.','LineWidth',.25,'Color',[0 1 0]);
-    hold on;
-%     grid on;
-    plotHandle2 = plot(handles.pictureBox1,time,ppSetpoint,'Marker','.','LineWidth',.25,'Color','red');
-    plotHandle3 = plot(handles.pictureBox1,time,ppMV,'Marker','.','LineWidth',.22,'Color',[0 0 1]);
-    xlim(handles.pictureBox1,[max(time-0.001) max(time+0.0005)]);
-    ylim(handles.pictureBox1,[-10,100]);    
-    leg = legend('(PV)','(SP)','(MV)');
-    legtxt = findobj(leg,'type','text');    
-    lastKi=pKi;
-    count = 1;
+    lastTime = now;  
+    
+    minn = -1000;
+    maxx=1000;
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Khoi tao bo Motor  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
@@ -154,9 +117,47 @@ if button_state == get(hObject,'Max')
     R = 1;
     L = 0.5;
     
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Vong lap %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
-%      while (1) 
-     for i=1:0.1:1000
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% Khoi tao PID  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    pPV = 0;  % actual possition (Process Value)
+    pInterval = 0;
+    pError = 0;   % how much SP and PV are diff (SP - PV)
+    pIntegral = 0; % curIntegral + (error * Delta Time)
+    pDerivative = 0;  %error - prev error) / Delta time
+    preError=0; % error from last time (previous Error)
+    pKp = 1;      pKi = 1;    pKd = 1; % PID constant multipliers
+    pDt = 0; % delta time
+    pMV = 0; % the drive amount that effects the PV.
+    pNoisePercent = 0; % amount of the full range to randomly alter the PV
+    pNoise = 0;  % random noise added to PV
+    noise=0;
+    
+    lastderivative=0;
+    preIntegral=0;
+
+    kp=0;
+    ki=0;
+    kd=0;
+    lastKi=pKi;
+    
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% Plot Gia Tri Mac Dinh %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
+     
+    plotHandle = plot(handles.pictureBox1,time,ppPV,'Marker','.','LineWidth',.25,'Color',[0 1 0]);
+    hold on;
+%     grid on;
+    plotHandle2 = plot(handles.pictureBox1,time,ppSetpoint,'Marker','.','LineWidth',.25,'Color','red');
+    plotHandle3 = plot(handles.pictureBox1,time,ppMV,'Marker','.','LineWidth',.22,'Color',[0 0 1]);
+    xlim(handles.pictureBox1,[max(time-0.001) max(time+0.0005)]);
+    ylim(handles.pictureBox1,[-10,150]);    
+    leg = legend('(PV)','(SP)','(MV)');
+    legtxt = findobj(leg,'type','text');   
+    count = 1;
+    
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Vong lap %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+
+     while (1) 
+%      for i=1:0.1:1000
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Lay gia tri Setpoint %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
 
         Setpoint =get(handles.trackBarSP,'value');   
@@ -190,8 +191,9 @@ if button_state == get(hObject,'Max')
             pIntegral=0; %errSum = 0;  
             preMV = MV - pKp * error; %error=pError
         end        
-        
+%         
 %%%%%%%%%%%%%%%%%%5%%%%%%%%%%%%%% Tinh noise  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
         if get(handles.cbNoise,'Value') == 1
             pNoise= get(handles.slideNoisePersent,'value');
             set(handles.nudNoisePercent,'String',num2str(pNoise));
@@ -203,9 +205,11 @@ if button_state == get(hObject,'Max')
         end
         
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% time to display %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
-        i(count)=i;
+
         time(count) = datenum(clock);
         time_out(count) = etime(clock,startTime);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% source PID %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
 
 %         previous_error = 0 
 %         integral = 0 
@@ -219,34 +223,21 @@ if button_state == get(hObject,'Max')
 %         goto start
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Tinh He thong %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
-        pDt=pDt/100;      
-        b1 = pKp+pKd/pDt+pDt*pKi;
-        b2 = pKp+2*pKd/pDt;
-        b3 = pKd/pDt;
-        
-                error = Setpoint - PV;
 
+        pDt=pDt/100;      
+        error = Setpoint - PV;
         pIntegral = preIntegral + (error * pDt);
-%         dErr = (error - preError) / Dt;
         derivative_raw = (error - preError) / pDt;
         pDerivative =(error - preError) / pDt;
 %         pDerivative = filter * derivative_raw + (1 - filter) * lastderivative;
-
-%             PV = PV + (output * pDt) -(PV * pDt)+ noise;
-%%xxxxxxxxx%%% preV
-
-
-%         err = Setpoint - preVmotor;
-%         A=((2*J*L)/pDt^2)+((J*L+b*L)/pDt);
-%         B=(J*L/pDt^2)+((J*L+b*L)/pDt)+b*R+K^2;
         A = 2*J* L / pDt/pDt + (J*R + b*L) /pDt;
         B = J*L / pDt/pDt + (J*R + b*L) /pDt + b*R + K*K;
         MV = preMV+ (pKp * error) + (pKi * pIntegral) + (pKd * pDerivative)+noise;
-%         MV= preMV+ error*b1 - preError*b2 + prepreError*b3;
         Vmotor= ((K*MV)+preVmotor*A-prepreVmotor*(J*L/(pDt^2)))/B;   
-
-%         PV = MV+ Vmotor;%MV + Vmotor;% prePV + MV + Vmotor;
         PV =Vmotor;
+%         PV=convangvel(Vmotor,'rad/s','rpm');
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Display Value Each OutPut %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         disp([
             ' (MV): ' num2str(MV,'%3.0f') ...
@@ -292,7 +283,9 @@ if button_state == get(hObject,'Max')
         preMV=MV;
         lastderivative = pDerivative;  
         preIntegral=pIntegral;
+        
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Lam` tron` %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %         MV = round(MV);
 %         PV=round(PV);
 %         Setpoint=round(Setpoint);
@@ -304,10 +297,8 @@ if button_state == get(hObject,'Max')
         ppPV(count)=PV;
         ppSetpoint(count)= Setpoint;
 
-%         ppoutSYS(count)=outSYS;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% Display Value Each OutPut %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%% Show gia tri %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %         disp([
 %             ' (OP): ' num2str(MV,'%3.0f') ...
 %             ' (PV): ' num2str(PV,'%6.2f') ...
@@ -315,10 +306,11 @@ if button_state == get(hObject,'Max')
 %           disp([' DT: ' pDt]);
           
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Truyen gia tri vao GUI %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%         set(plotHandle,'YData',ppPV,'XData',time);
+
         set(plotHandle,'YData',ppPV,'XData',time);
+%         set(plotHandle,'YData',ppPV,'XData',time);
         set(plotHandle2,'YData',ppSetpoint,'XData',time);
-        set(plotHandle3,'YData',ppMV-50,'XData',time);
+        set(plotHandle3,'YData',ppMV,'XData',time);
         set(handles.pictureBox1,'xlim',[max(time)-.00005 max(time)+.00001]);
         
         pNoise= get(handles.slideNoisePersent,'value');
@@ -345,7 +337,6 @@ if button_state == get(hObject,'Max')
 
         datetick('x','SS','keeplimits');        
         pause(timeInterval);
-%         DT
         count = count +1;
         % save values
         lastKi = pKi; 
@@ -360,7 +351,7 @@ if button_state == get(hObject,'Max')
 %         end
 %       end
     end 
-        set(handles.pictureBox1,'xlim',[min(time)-.01 max(time)+.01]);
+%         set(handles.pictureBox1,'xlim',[min(time)-.01 max(time)+.01]);
         pause(.01);
         
 elseif button_state == get(hObject,'Min')
